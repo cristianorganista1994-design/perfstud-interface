@@ -18,33 +18,43 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // Diccionarios de mapeo visual para las variables categóricas solicitadas
-        const TEXTOS_GENERO = {
-            0: "Femenino",
-            1: "Masculino"
-        };
+        // Diccionarios de mapeo para renderizar los menús desplegables
+        const OPCIONES_GENERO = [
+            { value: 0, label: "Femenino" },
+            { value: 1, label: "Masculino" }
+        ];
 
-        const TEXTOS_ETNIA = {
-            0: "Blanco",
-            1: "Afroamericano",
-            2: "Indígena",
-            3: "Otra"
-        };
+        const OPCIONES_ETNIA = [
+            { value: 0, label: "Blanco" },
+            { value: 1, label: "Afroamericano" },
+            { value: 2, label: "Indígena" },
+            { value: 3, label: "Otra" }
+        ];
 
-        // Configuración exacta basada en el Cuadro 2 de tu proyecto
+        const OPCIONES_NIVEL = [
+            { value: 0, label: "Nivel 0 (Ninguno / Muy Bajo)" },
+            { value: 1, label: "Nivel 1 (Bajo)" },
+            { value: 2, label: "Nivel 2 (Medio)" },
+            { value: 3, label: "Nivel 3 (Alto)" },
+            { value: 4, label: "Nivel 4 (Muy Alto / Superior)" }
+        ];
+
+        // Estructura de variables organizadas por tipo de control para el formulario
         const VARIABLES_CONFIG = [
-            { id: 'Age', label: 'Edad (Age)', min: 15, max: 22, step: 1, desc: 'Edad del estudiante' },
-            { id: 'Gender', label: 'Género (Gender)', min: 0, max: 1, step: 1, desc: 'Identificación de género' },
-            { id: 'Ethnicity', label: 'Grupo Étnico (Ethnicity)', min: 0, max: 3, step: 1, desc: 'Clasificación étnica' },
-            { id: 'ParentalEducation', label: 'Educación Padres (ParentalEducation)', min: 0, max: 4, step: 1, desc: 'Nivel educativo (0-4)' },
-            { id: 'StudyTimeWeekly', label: 'Horas Estudio Semanal (StudyTimeWeekly)', min: 1, max: 30, step: 0.5, desc: 'Horas dedicadas a estudiar' },
-            { id: 'Absences', label: 'Ausencias Escolares (Absences)', min: 0, max: 30, step: 1, desc: 'Número de inasistencias' },
-            { id: 'Tutoring', label: 'Recibe Tutoría (Tutoring)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' },
-            { id: 'ParentalSupport', label: 'Apoyo Parental (ParentalSupport)', min: 0, max: 4, step: 1, desc: 'Nivel de apoyo (0-4)' },
-            { id: 'Extracurricular', label: 'Actividades Extracurriculares', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' },
-            { id: 'Sports', label: 'Practica Deportes (Sports)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' },
-            { id: 'Music', label: 'Practica Música (Music)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' },
-            { id: 'Volunteering', label: 'Realiza Voluntariado (Volunteering)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' }
+            { id: 'Age', label: 'Edad (Age)', min: 15, max: 22, step: 1, desc: 'Edad del estudiante', type: 'slider' },
+            { id: 'StudyTimeWeekly', label: 'Horas Estudio Semanal (StudyTimeWeekly)', min: 1, max: 30, step: 0.5, desc: 'Horas dedicadas a estudiar', type: 'slider' },
+            { id: 'Absences', label: 'Ausencias Escolares (Absences)', min: 0, max: 30, step: 1, desc: 'Número de inasistencias', type: 'slider' },
+            
+            { id: 'Gender', label: 'Género (Gender)', desc: 'Identificación de género', type: 'select', options: OPCIONES_GENERO },
+            { id: 'Ethnicity', label: 'Grupo Étnico (Ethnicity)', desc: 'Clasificación étnica', type: 'select', options: OPCIONES_ETNIA },
+            { id: 'ParentalEducation', label: 'Educación Padres (ParentalEducation)', desc: 'Nivel educativo alcanzado', type: 'select', options: OPCIONES_NIVEL },
+            { id: 'ParentalSupport', label: 'Apoyo Parental (ParentalSupport)', desc: 'Nivel de apoyo en el hogar', type: 'select', options: OPCIONES_NIVEL },
+            
+            { id: 'Tutoring', label: 'Recibe Tutoría (Tutoring)', desc: 'Apoyo académico extra', type: 'checkbox' },
+            { id: 'Extracurricular', label: 'Actividades Extracurriculares', desc: 'Participa en talleres/clubes', type: 'checkbox' },
+            { id: 'Sports', label: 'Practica Deportes (Sports)', desc: 'Actividad física regular', type: 'checkbox' },
+            { id: 'Music', label: 'Practica Música (Music)', desc: 'Formación o práctica musical', type: 'checkbox' },
+            { id: 'Volunteering', label: 'Realiza Voluntariado (Volunteering)', desc: 'Proyectos de ayuda social', type: 'checkbox' }
         ];
 
         // Mapeo Oficial Basado en la Tabla de Distribución de tu Proyecto
@@ -79,7 +89,14 @@
         function App() {
             const [formData, setFormData] = useState(() => {
                 return VARIABLES_CONFIG.reduce((acc, curr) => {
-                    acc[curr.id] = curr.min;
+                    // Inicializar checkboxes en 0 y el resto en sus mínimos o primeras opciones
+                    if (curr.type === 'checkbox') {
+                        acc[curr.id] = 0;
+                    } else if (curr.type === 'slider') {
+                        acc[curr.id] = curr.min;
+                    } else {
+                        acc[curr.id] = curr.options[0].value;
+                    }
                     return acc;
                 }, {});
             });
@@ -87,27 +104,28 @@
             const [results, setResults] = useState(null);
 
             const handleChange = (id, val) => {
-                setFormData(prev => ({ ...prev, [id]: parseFloat(val) || 0 }));
+                setFormData(prev => ({ ...prev, [id]: parseFloat(val) }));
+            };
+
+            const handleCheckboxChange = (id, checked) => {
+                setFormData(prev => ({ ...prev, [id]: checked ? 1 : 0 }));
             };
 
             const generarDatosAleatorios = () => {
                 const nuevosDatos = {};
                 VARIABLES_CONFIG.forEach(v => {
-                    const rand = Math.random() * (v.max - v.min) + v.min;
-                    const factor = 1 / v.step;
-                    nuevosDatos[v.id] = Math.round(rand * factor) / factor;
+                    if (v.type === 'checkbox') {
+                        nuevosDatos[v.id] = Math.random() > 0.5 ? 1 : 0;
+                    } else if (v.type === 'slider') {
+                        const rand = Math.random() * (v.max - v.min) + v.min;
+                        const factor = 1 / v.step;
+                        nuevosDatos[v.id] = Math.round(rand * factor) / factor;
+                    } else {
+                        const opcionAlAzar = v.options[Math.floor(Math.random() * v.options.length)];
+                        nuevosDatos[v.id] = opcionAlAzar.value;
+                    }
                 });
                 setFormData(nuevosDatos);
-            };
-
-            // Función auxiliar para formatear el valor numérico en texto entendible en la interfaz
-            const obtenerValorFormateado = (id, valor) => {
-                if (id === 'Gender') return TEXTOS_GENERO[valor] || valor;
-                if (id === 'Ethnicity') return TEXTOS_ETNIA[valor] || valor;
-                if (['Tutoring', 'Extracurricular', 'Sports', 'Music', 'Volunteering'].includes(id)) {
-                    return valor === 1 ? "Sí" : "No";
-                }
-                return valor; // Retorna el número normal para edad, ausencias, etc.
             };
 
             const handleSubmit = (e) => {
@@ -121,15 +139,15 @@
                     let claseBase = 2; //
                     
                     if (factorRendimiento > 15) {
-                        claseBase = 0; // Excelente
+                        claseBase = 0; 
                     } else if (factorRendimiento > 4) {
-                        claseBase = 1; // Sobresaliente
+                        claseBase = 1; 
                     } else if (factorRendimiento >= -3) {
-                        claseBase = 2; // Aceptable
+                        claseBase = 2; 
                     } else if (factorRendimiento >= -10) {
-                        claseBase = 3; // Bajo
+                        claseBase = 3; 
                     } else {
-                        claseBase = 4; // Insuficiente
+                        claseBase = 4; 
                     }
 
                     if (formData.Absences > 16) claseBase = 4;
@@ -142,7 +160,6 @@
                     claseArbol = Math.max(0, Math.min(4, claseArbol));
                     claseLogistica = Math.max(0, Math.min(4, claseLogistica));
 
-                    // Ensamble por promedio
                     const claseEnsamble = Math.round((claseNeuronal + claseArbol + claseLogistica) / 3);
 
                     const confNeuronal = 0.92 + Math.random() * 0.04;
@@ -177,43 +194,86 @@
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
                             
-                            {/* Panel Izquierdo: Formulario */}
+                            {/* Panel Izquierdo: Formulario Optimizado */}
                             <form onSubmit={handleSubmit} className="p-6 lg:col-span-6 border-r border-slate-100 space-y-6">
                                 <div className="flex justify-between items-center bg-slate-100 p-4 rounded-xl">
                                     <div>
-                                        <span className="block text-[10px] font-bold uppercase text-slate-500">Mapeo de Destino</span>
-                                        <span className="text-xs font-semibold text-slate-700">Escala de 5 Niveles (Clases 0 a 4)</span>
+                                        <span className="block text-[10px] font-bold uppercase text-slate-500">Formulario Ergonómico</span>
+                                        <span className="text-xs font-semibold text-slate-700">Mapeo optimizado de controles (0 a 4)</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={generarDatosAleatorios}
                                         className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow"
                                     >
-                                        🎲 Atributos Aleatorios
+                                        🎲 Cargar Estudiante Aleatorio
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {VARIABLES_CONFIG.map((v) => (
-                                        <div key={v.id} className="border border-slate-100 p-3 rounded-lg bg-white shadow-sm hover:bg-slate-50/50 transition-all">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <label className="text-xs font-bold text-slate-700">{v.label}</label>
-                                                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-sans font-bold">
-                                                    {obtenerValorFormateado(v.id, formData[v.id])}
-                                                </span>
+                                <div className="space-y-4">
+                                    {/* SECCIÓN 1: Sliders de Variables Continuas/Numéricas */}
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="sm:col-span-2 text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1">Variables Numéricas / Rangos</div>
+                                        {VARIABLES_CONFIG.filter(v => v.type === 'slider').map((v) => (
+                                            <div key={v.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <label className="text-xs font-bold text-slate-700">{v.label}</label>
+                                                    <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-sans font-bold">
+                                                        {formData[v.id]}
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min={v.min}
+                                                    max={v.max}
+                                                    step={v.step}
+                                                    value={formData[v.id]}
+                                                    onChange={(e) => handleChange(v.id, e.target.value)}
+                                                    className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                                />
                                             </div>
-                                            <input
-                                                type="range"
-                                                min={v.min}
-                                                max={v.max}
-                                                step={v.step}
-                                                value={formData[v.id]}
-                                                onChange={(e) => handleChange(v.id, e.target.value)}
-                                                className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                                            />
-                                            <span className="text-[10px] text-slate-400 block mt-0.5">{v.desc}</span>
+                                        ))}
+                                    </div>
+
+                                    {/* SECCIÓN 2: Menús Desplegables (Selects) */}
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="sm:col-span-2 text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1">Categorías Generales</div>
+                                        {VARIABLES_CONFIG.filter(v => v.type === 'select').map((v) => (
+                                            <div key={v.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between">
+                                                <label className="text-xs font-bold text-slate-700 mb-1.5">{v.label}</label>
+                                                <select
+                                                    value={formData[v.id]}
+                                                    onChange={(e) => handleChange(v.id, e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                                >
+                                                    {v.options.map(opt => (
+                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* SECCIÓN 3: Checkboxes (Casillas de Verificación) */}
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        <div className="text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1 mb-3">Atributos Dicotómicos / Binarios</div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {VARIABLES_CONFIG.filter(v => v.type === 'checkbox').map((v) => (
+                                                <label key={v.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm flex items-center gap-3 cursor-pointer select-none hover:bg-slate-50/50 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData[v.id] === 1}
+                                                        onChange={(e) => handleCheckboxChange(v.id, e.target.checked)}
+                                                        className="w-4 h-4 rounded text-indigo-600 bg-slate-100 border-slate-300 focus:ring-indigo-500 focus:ring-2 accent-indigo-600"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-slate-700">{v.label}</span>
+                                                        <span className="text-[10px] text-slate-400">{v.desc}</span>
+                                                    </div>
+                                                </label>
+                                            ))}
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
 
                                 <button
@@ -233,7 +293,7 @@
                                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 bg-white rounded-xl">
                                         <span className="text-4xl mb-2">📊</span>
                                         <p className="text-xs text-slate-400 font-semibold max-w-sm">
-                                            Modifique los parámetros o genere un estudiante aleatorio para evaluar las salidas de clasificación del 0 al 4.
+                                            Interactúe con el nuevo formulario estructurado para evaluar los 4 bloques de inferencia.
                                         </p>
                                     </div>
                                 )}
