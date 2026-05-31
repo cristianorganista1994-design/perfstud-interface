@@ -18,11 +18,24 @@
     <script type="text/babel">
         const { useState } = React;
 
+        // Diccionarios de mapeo visual para las variables categóricas solicitadas
+        const TEXTOS_GENERO = {
+            0: "Femenino",
+            1: "Masculino"
+        };
+
+        const TEXTOS_ETNIA = {
+            0: "Blanco",
+            1: "Afroamericano",
+            2: "Indígena",
+            3: "Otra"
+        };
+
         // Configuración exacta basada en el Cuadro 2 de tu proyecto
         const VARIABLES_CONFIG = [
             { id: 'Age', label: 'Edad (Age)', min: 15, max: 22, step: 1, desc: 'Edad del estudiante' },
-            { id: 'Gender', label: 'Género (Gender)', min: 0, max: 1, step: 1, desc: '0: Femenino, 1: Masculino' },
-            { id: 'Ethnicity', label: 'Grupo Étnico (Ethnicity)', min: 0, max: 3, step: 1, desc: 'Clasificación étnica (0-3)' },
+            { id: 'Gender', label: 'Género (Gender)', min: 0, max: 1, step: 1, desc: 'Identificación de género' },
+            { id: 'Ethnicity', label: 'Grupo Étnico (Ethnicity)', min: 0, max: 3, step: 1, desc: 'Clasificación étnica' },
             { id: 'ParentalEducation', label: 'Educación Padres (ParentalEducation)', min: 0, max: 4, step: 1, desc: 'Nivel educativo (0-4)' },
             { id: 'StudyTimeWeekly', label: 'Horas Estudio Semanal (StudyTimeWeekly)', min: 1, max: 30, step: 0.5, desc: 'Horas dedicadas a estudiar' },
             { id: 'Absences', label: 'Ausencias Escolares (Absences)', min: 0, max: 30, step: 1, desc: 'Número de inasistencias' },
@@ -42,7 +55,7 @@
                 "Otorgar mención de honor o incentivos de excelencia académica institucional."
             ]},
             1: { label: "Clase 1: Sobresaliente", estilos: "bg-green-100 text-green-800 border-green-200", interventions: [
-                "Promover la participación del estudiante en monitores académicas voluntarias.",
+                "Promover la participación del estudiante en monitorías académicas voluntarias.",
                 "Incentivar la selección de asignaturas electivas de profundización o alta exigencia.",
                 "Mantener el seguimiento regular para asegurar la continuidad del alto desempeño."
             ]},
@@ -58,8 +71,8 @@
             ]},
             4: { label: "Clase 4: Insuficiente", estilos: "bg-red-100 text-red-800 border-red-200", interventions: [
                 "Priorizar la remisión inmediata a los programas institucionales de acompañamiento psicopedagógico y bienestar.",
-                "Concertar una cita urgente con acudientes/padres de familia para estructurar un compromiso de corresponsabilidad.",
-                "Diseñar un plan de nivelación obligatorio y suspender temporalmente la carga extracurricular si afecta el desempeño."
+                "Concertar una cita urgente con acudientes/padres de familia para ajustar un compromiso de corresponsabilidad.",
+                "Diseñar un plan de nivelación obligatorio y suspender la carga extracurricular si afecta el desempeño."
             ]}
         };
 
@@ -87,17 +100,25 @@
                 setFormData(nuevosDatos);
             };
 
+            // Función auxiliar para formatear el valor numérico en texto entendible en la interfaz
+            const obtenerValorFormateado = (id, valor) => {
+                if (id === 'Gender') return TEXTOS_GENERO[valor] || valor;
+                if (id === 'Ethnicity') return TEXTOS_ETNIA[valor] || valor;
+                if (['Tutoring', 'Extracurricular', 'Sports', 'Music', 'Volunteering'].includes(id)) {
+                    return valor === 1 ? "Sí" : "No";
+                }
+                return valor; // Retorna el número normal para edad, ausencias, etc.
+            };
+
             const handleSubmit = (e) => {
                 e.preventDefault();
                 setLoading(true);
                 setResults(null);
 
                 setTimeout(() => {
-                    // Lógica predictiva simulada correlacionando el vector de entrada con las 5 clases reales
-                    // El factor crítico se calcula restando ausencias a las horas de estudio
+                    // Lógica predictiva simulada
                     const factorRendimiento = formData.StudyTimeWeekly - formData.Absences;
-                    
-                    let claseBase = 2; // Por defecto: Clase 2 (Aceptable)
+                    let claseBase = 2; //
                     
                     if (factorRendimiento > 15) {
                         claseBase = 0; // Excelente
@@ -108,56 +129,32 @@
                     } else if (factorRendimiento >= -10) {
                         claseBase = 3; // Bajo
                     } else {
-                        claseBase = 4; // Insuficiente (Alineado al peso del 50.6% de inasistencias/bajos factores)
+                        claseBase = 4; // Insuficiente
                     }
 
-                    // Forzar Clase 4 (Insuficiente) si las ausencias superan el umbral crítico
                     if (formData.Absences > 16) claseBase = 4;
 
-                    // Introducir sutiles desviaciones por modelo para simular diferencias de fronteras de decisión
                     let claseNeuronal = claseBase;
                     let claseArbol = (claseBase === 1 && formData.Tutoring === 0) ? 2 : claseBase;
                     let claseLogistica = (factorRendimiento < -12) ? 4 : (factorRendimiento < -6 ? 3 : (factorRendimiento > 10 ? 0 : claseBase));
 
-                    // Asegurar límites correctos de las clases (0-4)
                     claseNeuronal = Math.max(0, Math.min(4, claseNeuronal));
                     claseArbol = Math.max(0, Math.min(4, claseArbol));
                     claseLogistica = Math.max(0, Math.min(4, claseLogistica));
 
-                    // 👑 OPERACIÓN DEL ENSAMBLE (Promedio Numérico de las 3 Clases Redondeado)
+                    // Ensamble por promedio
                     const claseEnsamble = Math.round((claseNeuronal + claseArbol + claseLogistica) / 3);
 
-                    // Generar precisiones de confianza realistas para cada modelo
                     const confNeuronal = 0.92 + Math.random() * 0.04;
                     const confArbol = 0.87 + Math.random() * 0.05;
                     const confLogistica = 0.83 + Math.random() * 0.04;
                     const confEnsamble = (confNeuronal + confArbol + confLogistica) / 3;
 
                     const salidaModelos = [
-                        {
-                            name: "Red Neuronal + Algoritmo Genético",
-                            claseId: claseNeuronal,
-                            confidence: confNeuronal,
-                            isEnsemble: false
-                        },
-                        {
-                            name: "Árboles de Decisión",
-                            claseId: claseArbol,
-                            confidence: confArbol,
-                            isEnsemble: false
-                        },
-                        {
-                            name: "Regresión Logística",
-                            claseId: claseLogistica,
-                            confidence: confLogistica,
-                            isEnsemble: false
-                        },
-                        {
-                            name: "Ensamble Predictivo (Promedio de Modelos)",
-                            claseId: claseEnsamble,
-                            confidence: confEnsamble,
-                            isEnsemble: true
-                        }
+                        { name: "Red Neuronal + Algoritmo Genético", claseId: claseNeuronal, confidence: confNeuronal, isEnsemble: false },
+                        { name: "Árboles de Decisión", claseId: claseArbol, confidence: confArbol, isEnsemble: false },
+                        { name: "Regresión Logística", claseId: claseLogistica, confidence: confLogistica, isEnsemble: false },
+                        { name: "Ensamble Predictivo (Promedio de Modelos)", claseId: claseEnsamble, confidence: confEnsamble, isEnsemble: true }
                     ];
 
                     setResults(salidaModelos);
@@ -169,10 +166,10 @@
                 <div className="p-4 md:p-6 max-w-7xl mx-auto font-sans">
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                         
-                        {/* Banner unificado */}
+                        {/* Banner Principal */}
                         <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white relative">
                             <h1 className="text-xl md:text-2xl font-black tracking-tight">📊 Sistema Predictivo Multi-Modelo Paralelo</h1>
-                            <p className="text-slate-300 text-xs md:text-sm mt-1">Inferencia simultánea de modelos entrenados y métrica consolidadas por ensamble ordinal.</p>
+                            <p className="text-slate-300 text-xs md:text-sm mt-1">Inferencia simultánea de modelos entrenados y métricas consolidadas por ensamble ordinal.</p>
                             <span className="absolute top-4 right-4 bg-amber-500 text-slate-900 font-bold text-[10px] px-2.5 py-0.5 rounded shadow">
                                 🛠️ MODO SIMULACIÓN OFFLINE (5 CLASES)
                             </span>
@@ -201,8 +198,8 @@
                                         <div key={v.id} className="border border-slate-100 p-3 rounded-lg bg-white shadow-sm hover:bg-slate-50/50 transition-all">
                                             <div className="flex justify-between items-center mb-1">
                                                 <label className="text-xs font-bold text-slate-700">{v.label}</label>
-                                                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono font-bold">
-                                                    {formData[v.id]}
+                                                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-sans font-bold">
+                                                    {obtenerValorFormateado(v.id, formData[v.id])}
                                                 </span>
                                             </div>
                                             <input
@@ -228,7 +225,7 @@
                                 </button>
                             </form>
 
-                            {/* Panel Derecho: Los 4 bloques de resultados mapeados */}
+                            {/* Panel Derecho: Resultados */}
                             <div className="p-6 lg:col-span-6 bg-slate-50 flex flex-col justify-start min-h-[500px]">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">🎯 Dictámenes Simultáneos del Sistema</h3>
 
@@ -261,7 +258,6 @@
                                                         : 'bg-white border-slate-200/80'
                                                     }`}
                                                 >
-                                                    {/* Encabezado de la Tarjeta */}
                                                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                                                         <div className="flex items-center gap-1.5">
                                                             {res.isEnsemble && <span className="text-base">👑</span>}
@@ -274,17 +270,13 @@
                                                         </span>
                                                     </div>
 
-                                                    {/* Grid de Estado y Recomendaciones */}
                                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                                                        
-                                                        {/* Badge Dinámico de la Clase Real (0-4) */}
                                                         <div className="md:col-span-4">
                                                             <span className={`text-xs font-black px-2 py-1.5 rounded-md block text-center border shadow-sm ${configCategoria.estilos}`}>
                                                                 {configCategoria.label}
                                                             </span>
                                                         </div>
 
-                                                        {/* Lista de Recomendaciones de la Clase */}
                                                         <div className={`md:col-span-8 p-2.5 rounded-lg border ${res.isEnsemble ? 'bg-white/80 border-amber-200' : 'bg-slate-50/50 border-slate-100'}`}>
                                                             <ul className="space-y-1.5">
                                                                 {configCategoria.interventions.map((acc, i) => (
@@ -295,7 +287,6 @@
                                                                 ))}
                                                             </ul>
                                                         </div>
-
                                                     </div>
                                                 </div>
                                             );
