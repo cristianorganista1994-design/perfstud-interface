@@ -34,23 +34,33 @@
             { id: 'Volunteering', label: 'Realiza Voluntariado (Volunteering)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' }
         ];
 
-        // Lógica institucional de recomendaciones según la clase predicha
-        const RECOMENDACIONES_DICCIONARIO = {
-            "Alta": [
-                "Promover al estudiante como tutor de pares académicos o mentor de proyectos.",
-                "Vincular formalmente a semilleros de investigación avanzada o proyectos especiales.",
-                "Asignar electivas de profundización o incentivos de excelencia académica."
-            ],
-            "Media": [
-                "Monitorear las inasistencias y programar asesorías preventivas antes de exámenes parciales.",
-                "Incentivar la participación en talleres de manejo del tiempo y productividad académica.",
-                "Realizar un control bimensual del rendimiento con el tutor académico asignado."
-            ],
-            "Insuficiente": [
-                "Priorizar la remisión inmediata a los programas de acompañamiento psicopedagógico y bienestar.",
-                "Establecer un plan obligatorio de nivelación con tutorías personalizadas semanales.",
-                "Agendar una sesión de seguimiento con acudientes para concertar un acuerdo de corresponsabilidad."
-            ]
+        // Mapeo Oficial Basado en la Tabla de Distribución de tu Proyecto
+        const CONFIG_CATEGORIAS = {
+            0: { label: "Clase 0: Excelente", estilos: "bg-emerald-100 text-emerald-800 border-emerald-200", interventions: [
+                "Vincular formalmente al estudiante a semilleros de investigación avanzada o proyectos especiales de la facultad.",
+                "Postular al estudiante como tutor de pares académicos para apoyar las asignaturas críticas.",
+                "Otorgar mención de honor o incentivos de excelencia académica institucional."
+            ]},
+            1: { label: "Clase 1: Sobresaliente", estilos: "bg-green-100 text-green-800 border-green-200", interventions: [
+                "Promover la participación del estudiante en monitores académicas voluntarias.",
+                "Incentivar la selección de asignaturas electivas de profundización o alta exigencia.",
+                "Mantener el seguimiento regular para asegurar la continuidad del alto desempeño."
+            ]},
+            2: { label: "Clase 2: Aceptable", estilos: "bg-blue-100 text-blue-800 border-blue-200", interventions: [
+                "Incentivar la participación activa en talleres organizados de manejo del tiempo y hábitos de estudio.",
+                "Sugerir tutorías grupales voluntarias en temas específicos previos a las evaluaciones parciales.",
+                "Realizar una revisión de medio término de las calificaciones con el consejero de carrera."
+            ]},
+            3: { label: "Clase 3: Bajo", estilos: "bg-orange-100 text-orange-800 border-orange-200", interventions: [
+                "Agendar tutorías académicas obligatorias semanales en las asignaturas con mayor dificultad.",
+                "Establecer un monitoreo quincenal estricto de las ausencias del estudiante en plataforma.",
+                "Remitir a talleres de acompañamiento académico intermedio para fortalecer competencias clave."
+            ]},
+            4: { label: "Clase 4: Insuficiente", estilos: "bg-red-100 text-red-800 border-red-200", interventions: [
+                "Priorizar la remisión inmediata a los programas institucionales de acompañamiento psicopedagógico y bienestar.",
+                "Concertar una cita urgente con acudientes/padres de familia para estructurar un compromiso de corresponsabilidad.",
+                "Diseñar un plan de nivelación obligatorio y suspender temporalmente la carga extracurricular si afecta el desempeño."
+            ]}
         };
 
         function App() {
@@ -61,7 +71,7 @@
                 }, {});
             });
             const [loading, setLoading] = useState(false);
-            const [results, setResults] = useState(null); // Ahora guardará un array con los 3 resultados
+            const [results, setResults] = useState(null);
 
             const handleChange = (id, val) => {
                 setFormData(prev => ({ ...prev, [id]: parseFloat(val) || 0 }));
@@ -82,39 +92,71 @@
                 setLoading(true);
                 setResults(null);
 
-                // Retraso simulado de procesamiento paralelo
                 setTimeout(() => {
+                    // Lógica predictiva simulada correlacionando el vector de entrada con las 5 clases reales
+                    // El factor crítico se calcula restando ausencias a las horas de estudio
                     const factorRendimiento = formData.StudyTimeWeekly - formData.Absences;
                     
-                    // Determinar clase base inteligente según las entradas
-                    let claseBase = "Media";
-                    if (factorRendimiento > 6) claseBase = "Alta";
-                    if (factorRendimiento < -4 || formData.Absences > 14) claseBase = "Insuficiente";
+                    let claseBase = 2; // Por defecto: Clase 2 (Aceptable)
+                    
+                    if (factorRendimiento > 15) {
+                        claseBase = 0; // Excelente
+                    } else if (factorRendimiento > 4) {
+                        claseBase = 1; // Sobresaliente
+                    } else if (factorRendimiento >= -3) {
+                        claseBase = 2; // Aceptable
+                    } else if (factorRendimiento >= -10) {
+                        claseBase = 3; // Bajo
+                    } else {
+                        claseBase = 4; // Insuficiente (Alineado al peso del 50.6% de inasistencias/bajos factores)
+                    }
 
-                    // Simular pequeñas variaciones lógicas entre modelos (como pasaría en la realidad)
-                    const claseArbol = claseBase;
-                    const claseLogistica = factorRendimiento > 8 ? "Alta" : (factorRendimiento < -2 ? "Insuficiente" : "Media");
-                    const claseNeuronal = (claseBase === "Insuficiente" && formData.ParentalSupport >= 3) ? "Media" : claseBase;
+                    // Forzar Clase 4 (Insuficiente) si las ausencias superan el umbral crítico
+                    if (formData.Absences > 16) claseBase = 4;
 
-                    // Construcción de la respuesta paralela de los 3 modelos definitivos
+                    // Introducir sutiles desviaciones por modelo para simular diferencias de fronteras de decisión
+                    let claseNeuronal = claseBase;
+                    let claseArbol = (claseBase === 1 && formData.Tutoring === 0) ? 2 : claseBase;
+                    let claseLogistica = (factorRendimiento < -12) ? 4 : (factorRendimiento < -6 ? 3 : (factorRendimiento > 10 ? 0 : claseBase));
+
+                    // Asegurar límites correctos de las clases (0-4)
+                    claseNeuronal = Math.max(0, Math.min(4, claseNeuronal));
+                    claseArbol = Math.max(0, Math.min(4, claseArbol));
+                    claseLogistica = Math.max(0, Math.min(4, claseLogistica));
+
+                    // 👑 OPERACIÓN DEL ENSAMBLE (Promedio Numérico de las 3 Clases Redondeado)
+                    const claseEnsamble = Math.round((claseNeuronal + claseArbol + claseLogistica) / 3);
+
+                    // Generar precisiones de confianza realistas para cada modelo
+                    const confNeuronal = 0.92 + Math.random() * 0.04;
+                    const confArbol = 0.87 + Math.random() * 0.05;
+                    const confLogistica = 0.83 + Math.random() * 0.04;
+                    const confEnsamble = (confNeuronal + confArbol + confLogistica) / 3;
+
                     const salidaModelos = [
                         {
                             name: "Red Neuronal + Algoritmo Genético",
-                            grade_class: claseNeuronal,
-                            confidence: 0.91 + Math.random() * 0.05,
-                            interventions: RECOMENDACIONES_DICCIONARIO[claseNeuronal]
+                            claseId: claseNeuronal,
+                            confidence: confNeuronal,
+                            isEnsemble: false
                         },
                         {
                             name: "Árboles de Decisión",
-                            grade_class: claseArbol,
-                            confidence: 0.88 + Math.random() * 0.06,
-                            interventions: RECOMENDACIONES_DICCIONARIO[claseArbol]
+                            claseId: claseArbol,
+                            confidence: confArbol,
+                            isEnsemble: false
                         },
                         {
                             name: "Regresión Logística",
-                            grade_class: claseLogistica,
-                            confidence: 0.84 + Math.random() * 0.05,
-                            interventions: RECOMENDACIONES_DICCIONARIO[claseLogistica]
+                            claseId: claseLogistica,
+                            confidence: confLogistica,
+                            isEnsemble: false
+                        },
+                        {
+                            name: "Ensamble Predictivo (Promedio de Modelos)",
+                            claseId: claseEnsamble,
+                            confidence: confEnsamble,
+                            isEnsemble: true
                         }
                     ];
 
@@ -128,33 +170,32 @@
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                         
                         {/* Banner unificado */}
-                        <div className="bg-gradient-to-r from-indigo-900 via-blue-800 to-slate-900 p-6 text-white relative">
+                        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white relative">
                             <h1 className="text-xl md:text-2xl font-black tracking-tight">📊 Sistema Predictivo Multi-Modelo Paralelo</h1>
-                            <p className="text-indigo-200 text-xs md:text-sm mt-1">Inferencia simultánea de modelos para el diagnóstico del rendimiento estudiantil.</p>
-                            <span className="absolute top-4 right-4 bg-emerald-500 text-slate-900 font-bold text-[10px] px-2.5 py-0.5 rounded shadow">
-                                ⚡ MULTI-MODELO ACTIVADO
+                            <p className="text-slate-300 text-xs md:text-sm mt-1">Inferencia simultánea de modelos entrenados y métrica consolidadas por ensamble ordinal.</p>
+                            <span className="absolute top-4 right-4 bg-amber-500 text-slate-900 font-bold text-[10px] px-2.5 py-0.5 rounded shadow">
+                                🛠️ MODO SIMULACIÓN OFFLINE (5 CLASES)
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
                             
-                            {/* Panel Izquierdo: 12 Variables */}
+                            {/* Panel Izquierdo: Formulario */}
                             <form onSubmit={handleSubmit} className="p-6 lg:col-span-6 border-r border-slate-100 space-y-6">
                                 <div className="flex justify-between items-center bg-slate-100 p-4 rounded-xl">
                                     <div>
-                                        <span className="block text-[10px] font-bold uppercase text-slate-500">Modo de Operación</span>
-                                        <span className="text-xs font-semibold text-slate-700">Evaluación Simultánea (3 Algoritmos)</span>
+                                        <span className="block text-[10px] font-bold uppercase text-slate-500">Mapeo de Destino</span>
+                                        <span className="text-xs font-semibold text-slate-700">Escala de 5 Niveles (Clases 0 a 4)</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={generarDatosAleatorios}
                                         className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow"
                                     >
-                                        🎲 Generar Atributos
+                                        🎲 Atributos Aleatorios
                                     </button>
                                 </div>
 
-                                {/* Rejilla de Sliders */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {VARIABLES_CONFIG.map((v) => (
                                         <div key={v.id} className="border border-slate-100 p-3 rounded-lg bg-white shadow-sm hover:bg-slate-50/50 transition-all">
@@ -183,11 +224,11 @@
                                     disabled={loading}
                                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow transition-all disabled:bg-slate-300 transform active:scale-[0.99]"
                                 >
-                                    {loading ? '⏳ Calculando Matrices Comparativas...' : '🚀 Ejecutar Inferencia de Modelos'}
+                                    {loading ? '⏳ Calculando Matrices en Paralelo...' : '🚀 Ejecutar Diagnóstico de Rendimiento'}
                                 </button>
                             </form>
 
-                            {/* Panel Derecho: Resultados en Paralelo */}
+                            {/* Panel Derecho: Los 4 bloques de resultados mapeados */}
                             <div className="p-6 lg:col-span-6 bg-slate-50 flex flex-col justify-start min-h-[500px]">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">🎯 Dictámenes Simultáneos del Sistema</h3>
 
@@ -195,7 +236,7 @@
                                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 bg-white rounded-xl">
                                         <span className="text-4xl mb-2">📊</span>
                                         <p className="text-xs text-slate-400 font-semibold max-w-sm">
-                                            Presione el botón de ejecución para evaluar el vector del estudiante en los tres modelos en paralelo de forma inmediata.
+                                            Modifique los parámetros o genere un estudiante aleatorio para evaluar las salidas de clasificación del 0 al 4.
                                         </p>
                                     </div>
                                 )}
@@ -203,52 +244,62 @@
                                 {loading && (
                                     <div className="flex-1 flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-inner">
                                         <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-3"></div>
-                                        <p className="text-xs font-bold text-slate-500 animate-pulse">Consultando motores paralelos de clasificación...</p>
+                                        <p className="text-xs font-bold text-slate-500 animate-pulse">Consultando motores paralelos y ensambles de votación...</p>
                                     </div>
                                 )}
 
                                 {results && (
                                     <div className="space-y-4 flex-1">
-                                        {results.map((res, index) => (
-                                            <div key={index} className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-                                                
-                                                {/* Encabezado del Algoritmo */}
-                                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                                    <span className="text-xs font-black text-slate-700 uppercase tracking-tight">{res.name}</span>
-                                                    <span className="text-[11px] font-mono text-slate-400">
-                                                        Confianza: <b>{(res.confidence * 100).toFixed(1)}%</b>
-                                                    </span>
-                                                </div>
-
-                                                {/* Fila de Clase y Recomendaciones */}
-                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                                                    
-                                                    {/* Badge de la etiqueta */}
-                                                    <div className="md:col-span-4">
-                                                        <span className={`text-xs font-black px-2.5 py-1 rounded-md block text-center border ${
-                                                            res.grade_class === 'Alta' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                            res.grade_class === 'Media' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                            'bg-red-50 text-red-700 border-red-200'
-                                                        }`}>
-                                                            Clase {res.grade_class}
+                                        {results.map((res, index) => {
+                                            const configCategoria = CONFIG_CATEGORIAS[res.claseId];
+                                            return (
+                                                <div 
+                                                    key={index} 
+                                                    className={`p-4 rounded-xl border shadow-sm space-y-3 transition-all ${
+                                                        res.isEnsemble 
+                                                        ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-300 ring-2 ring-amber-400/20' 
+                                                        : 'bg-white border-slate-200/80'
+                                                    }`}
+                                                >
+                                                    {/* Encabezado de la Tarjeta */}
+                                                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {res.isEnsemble && <span className="text-base">👑</span>}
+                                                            <span className={`text-xs font-black tracking-tight ${res.isEnsemble ? 'text-amber-900 text-sm' : 'text-slate-700 uppercase'}`}>
+                                                                {res.name}
+                                                            </span>
+                                                        </div>
+                                                        <span className={`text-[11px] font-mono ${res.isEnsemble ? 'text-amber-700 font-bold' : 'text-slate-400'}`}>
+                                                            Confianza {res.isEnsemble ? 'Promedio' : ''}: <b>{(res.confidence * 100).toFixed(1)}%</b>
                                                         </span>
                                                     </div>
 
-                                                    {/* Lista de Recomendaciones de este modelo */}
-                                                    <div className="md:col-span-8 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
-                                                        <ul className="space-y-1.5">
-                                                            {res.interventions.map((acc, i) => (
-                                                                <li key={i} className="text-[11px] text-slate-600 leading-tight flex items-start gap-1.5">
-                                                                    <span className="text-indigo-600 font-bold">•</span>
-                                                                    <span>{acc}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
+                                                    {/* Grid de Estado y Recomendaciones */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                                                        
+                                                        {/* Badge Dinámico de la Clase Real (0-4) */}
+                                                        <div className="md:col-span-4">
+                                                            <span className={`text-xs font-black px-2 py-1.5 rounded-md block text-center border shadow-sm ${configCategoria.estilos}`}>
+                                                                {configCategoria.label}
+                                                            </span>
+                                                        </div>
 
+                                                        {/* Lista de Recomendaciones de la Clase */}
+                                                        <div className={`md:col-span-8 p-2.5 rounded-lg border ${res.isEnsemble ? 'bg-white/80 border-amber-200' : 'bg-slate-50/50 border-slate-100'}`}>
+                                                            <ul className="space-y-1.5">
+                                                                {configCategoria.interventions.map((acc, i) => (
+                                                                    <li key={i} className="text-[11px] text-slate-600 leading-tight flex items-start gap-1.5">
+                                                                        <span className={`${res.isEnsemble ? 'text-amber-600' : 'text-indigo-600'} font-bold`}>•</span>
+                                                                        <span>{acc}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
 
