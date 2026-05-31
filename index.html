@@ -63,27 +63,27 @@
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Estrato Socioeconómico</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="1.5">
+                                <input type="number" step="any" class="form-control feature-input" required value="1">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Tiempo en Transporte</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="3.0">
+                                <input type="number" step="any" class="form-control feature-input" required value="3">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Horas de Estudio Semanal</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="2.8">
+                                <input type="number" step="any" class="form-control feature-input" required value="2">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Acceso a Internet</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="4.2">
+                                <input type="number" step="any" class="form-control feature-input" required value="4">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Uso de Plataformas Virtuales</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="3.9">
+                                <input type="number" step="any" class="form-control feature-input" required value="3">
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="form-label">Horas de Entretenimiento/Redes</label>
-                                <input type="number" step="any" class="form-control feature-input" required value="4.5">
+                                <input type="number" step="any" class="form-control feature-input" required value="4">
                             </div>
                         </div>
 
@@ -191,7 +191,6 @@
             interventionsList.innerHTML = ''; // Limpiar anteriores
             
             result.interventions.forEach(item => {
-                const li = document.createElement('li');
                 const li = document.createElement('li');
                 li.className = 'list-group-item ps-0 border-0 text-muted small';
                 li.innerHTML = `• ${item}`;
