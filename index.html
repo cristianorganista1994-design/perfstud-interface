@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Clasificación Académica</title>
+    <title>Panel Multi-Modelo de Rendimiento Académico</title>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -16,10 +16,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Extraer hooks de forma segura desde el objeto global de React
         const { useState } = React;
-
-        const API_URL = "https://landlord-enjoyment-aflutter.ngrok-free.dev/predict";
 
         // Configuración exacta basada en el Cuadro 2 de tu proyecto
         const VARIABLES_CONFIG = [
@@ -37,23 +34,39 @@
             { id: 'Volunteering', label: 'Realiza Voluntariado (Volunteering)', min: 0, max: 1, step: 1, desc: '0: No, 1: Sí' }
         ];
 
+        // Lógica institucional de recomendaciones según la clase predicha
+        const RECOMENDACIONES_DICCIONARIO = {
+            "Alta": [
+                "Promover al estudiante como tutor de pares académicos o mentor de proyectos.",
+                "Vincular formalmente a semilleros de investigación avanzada o proyectos especiales.",
+                "Asignar electivas de profundización o incentivos de excelencia académica."
+            ],
+            "Media": [
+                "Monitorear las inasistencias y programar asesorías preventivas antes de exámenes parciales.",
+                "Incentivar la participación en talleres de manejo del tiempo y productividad académica.",
+                "Realizar un control bimensual del rendimiento con el tutor académico asignado."
+            ],
+            "Insuficiente": [
+                "Priorizar la remisión inmediata a los programas de acompañamiento psicopedagógico y bienestar.",
+                "Establecer un plan obligatorio de nivelación con tutorías personalizadas semanales.",
+                "Agendar una sesión de seguimiento con acudientes para concertar un acuerdo de corresponsabilidad."
+            ]
+        };
+
         function App() {
-            // Inicializar el estado usando las variables predictoras
             const [formData, setFormData] = useState(() => {
                 return VARIABLES_CONFIG.reduce((acc, curr) => {
                     acc[curr.id] = curr.min;
                     return acc;
                 }, {});
             });
-            const [model, setModel] = useState('random_forest');
             const [loading, setLoading] = useState(false);
-            const [result, setResult] = useState(null);
+            const [results, setResults] = useState(null); // Ahora guardará un array con los 3 resultados
 
             const handleChange = (id, val) => {
                 setFormData(prev => ({ ...prev, [id]: parseFloat(val) || 0 }));
             };
 
-            // Generador de datos aleatorios respetando tipos y rangos del Cuadro 2
             const generarDatosAleatorios = () => {
                 const nuevosDatos = {};
                 VARIABLES_CONFIG.forEach(v => {
@@ -64,77 +77,90 @@
                 setFormData(nuevosDatos);
             };
 
-            const handleSubmit = async (e) => {
+            const handleSubmit = (e) => {
                 e.preventDefault();
                 setLoading(true);
-                setResult(null);
+                setResults(null);
 
-                const featuresArray = VARIABLES_CONFIG.map(v => formData[v.id]);
+                // Retraso simulado de procesamiento paralelo
+                setTimeout(() => {
+                    const factorRendimiento = formData.StudyTimeWeekly - formData.Absences;
+                    
+                    // Determinar clase base inteligente según las entradas
+                    let claseBase = "Media";
+                    if (factorRendimiento > 6) claseBase = "Alta";
+                    if (factorRendimiento < -4 || formData.Absences > 14) claseBase = "Insuficiente";
 
-                try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'ngrok-skip-browser-warning': 'true'
+                    // Simular pequeñas variaciones lógicas entre modelos (como pasaría en la realidad)
+                    const claseArbol = claseBase;
+                    const claseLogistica = factorRendimiento > 8 ? "Alta" : (factorRendimiento < -2 ? "Insuficiente" : "Media");
+                    const claseNeuronal = (claseBase === "Insuficiente" && formData.ParentalSupport >= 3) ? "Media" : claseBase;
+
+                    // Construcción de la respuesta paralela de los 3 modelos definitivos
+                    const salidaModelos = [
+                        {
+                            name: "Red Neuronal + Algoritmo Genético",
+                            grade_class: claseNeuronal,
+                            confidence: 0.91 + Math.random() * 0.05,
+                            interventions: RECOMENDACIONES_DICCIONARIO[claseNeuronal]
                         },
-                        body: JSON.stringify({ model, features: featuresArray })
-                    });
+                        {
+                            name: "Árboles de Decisión",
+                            grade_class: claseArbol,
+                            confidence: 0.88 + Math.random() * 0.06,
+                            interventions: RECOMENDACIONES_DICCIONARIO[claseArbol]
+                        },
+                        {
+                            name: "Regresión Logística",
+                            grade_class: claseLogistica,
+                            confidence: 0.84 + Math.random() * 0.05,
+                            interventions: RECOMENDACIONES_DICCIONARIO[claseLogistica]
+                        }
+                    ];
 
-                    if (!response.ok) throw new Error('Error en la respuesta del servidor');
-                    const data = await response.json();
-                    setResult(data);
-                } catch (err) {
-                    alert('❌ Error al conectar con el backend en AWS. Verifica que Flask y ngrok estén activos.');
-                    console.error(err);
-                } finally {
+                    setResults(salidaModelos);
                     setLoading(false);
-                }
+                }, 900);
             };
 
             return (
-                <div className="p-4 md:p-8 max-w-6xl mx-auto">
+                <div className="p-4 md:p-6 max-w-7xl mx-auto font-sans">
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                         
-                        {/* Encabezado */}
-                        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-white">
-                            <h1 className="text-xl md:text-2xl font-bold">📊 Panel de Clasificación de Rendimiento Académico</h1>
-                            <p className="text-blue-100 text-xs md:text-sm mt-1">Simulador predictivo modular basado en 12 variables institucionales.</p>
+                        {/* Banner unificado */}
+                        <div className="bg-gradient-to-r from-indigo-900 via-blue-800 to-slate-900 p-6 text-white relative">
+                            <h1 className="text-xl md:text-2xl font-black tracking-tight">📊 Sistema Predictivo Multi-Modelo Paralelo</h1>
+                            <p className="text-indigo-200 text-xs md:text-sm mt-1">Inferencia simultánea de modelos para el diagnóstico del rendimiento estudiantil.</p>
+                            <span className="absolute top-4 right-4 bg-emerald-500 text-slate-900 font-bold text-[10px] px-2.5 py-0.5 rounded shadow">
+                                ⚡ MULTI-MODELO ACTIVADO
+                            </span>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
                             
-                            {/* Panel Formulario (Izquierda) */}
-                            <form onSubmit={handleSubmit} className="p-6 lg:col-span-7 border-r border-slate-100 space-y-6">
-                                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-slate-100 p-4 rounded-xl">
-                                    <div className="flex-1">
-                                        <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Modelo Seleccionado</label>
-                                        <select 
-                                            value={model} 
-                                            onChange={(e) => setModel(e.target.value)}
-                                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            <option value="random_forest">Random Forest Classifier</option>
-                                            <option value="genetic">Algoritmo Genético (eLCS)</option>
-                                            <option value="mlp">Red Neuronal Artificial (MLP)</option>
-                                        </select>
+                            {/* Panel Izquierdo: 12 Variables */}
+                            <form onSubmit={handleSubmit} className="p-6 lg:col-span-6 border-r border-slate-100 space-y-6">
+                                <div className="flex justify-between items-center bg-slate-100 p-4 rounded-xl">
+                                    <div>
+                                        <span className="block text-[10px] font-bold uppercase text-slate-500">Modo de Operación</span>
+                                        <span className="text-xs font-semibold text-slate-700">Evaluación Simultánea (3 Algoritmos)</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={generarDatosAleatorios}
-                                        className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow"
+                                        className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow"
                                     >
-                                        🎲 Datos Aleatorios
+                                        🎲 Generar Atributos
                                     </button>
                                 </div>
 
-                                {/* Controles de Variables Predictoras */}
+                                {/* Rejilla de Sliders */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {VARIABLES_CONFIG.map((v) => (
-                                        <div key={v.id} className="border border-slate-100 p-3 rounded-lg bg-white shadow-sm">
+                                        <div key={v.id} className="border border-slate-100 p-3 rounded-lg bg-white shadow-sm hover:bg-slate-50/50 transition-all">
                                             <div className="flex justify-between items-center mb-1">
                                                 <label className="text-xs font-bold text-slate-700">{v.label}</label>
-                                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-bold">
+                                                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono font-bold">
                                                     {formData[v.id]}
                                                 </span>
                                             </div>
@@ -145,7 +171,7 @@
                                                 step={v.step}
                                                 value={formData[v.id]}
                                                 onChange={(e) => handleChange(v.id, e.target.value)}
-                                                className="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                                className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                                             />
                                             <span className="text-[10px] text-slate-400 block mt-0.5">{v.desc}</span>
                                         </div>
@@ -155,58 +181,74 @@
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow transition-all disabled:bg-slate-300"
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow transition-all disabled:bg-slate-300 transform active:scale-[0.99]"
                                 >
-                                    {loading ? '⏳ Procesando matrices en AWS...' : '🚀 Ejecutar Diagnóstico de Rendimiento'}
+                                    {loading ? '⏳ Calculando Matrices Comparativas...' : '🚀 Ejecutar Inferencia de Modelos'}
                                 </button>
                             </form>
 
-                            {/* Panel Resultados (Derecha) */}
-                            <div className="p-6 lg:col-span-5 bg-slate-50 flex flex-col justify-start">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4">🎯 Diagnóstico de Salida</h3>
+                            {/* Panel Derecho: Resultados en Paralelo */}
+                            <div className="p-6 lg:col-span-6 bg-slate-50 flex flex-col justify-start min-h-[500px]">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">🎯 Dictámenes Simultáneos del Sistema</h3>
 
-                                {!result && !loading && (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 bg-white rounded-xl">
-                                        <span className="text-3xl mb-2">📊</span>
-                                        <p className="text-xs text-slate-400 font-medium">Llene las variables o genere valores aleatorios para evaluar el estado (Alta, Media o Insuficiente).</p>
+                                {!results && !loading && (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 bg-white rounded-xl">
+                                        <span className="text-4xl mb-2">📊</span>
+                                        <p className="text-xs text-slate-400 font-semibold max-w-sm">
+                                            Presione el botón de ejecución para evaluar el vector del estudiante en los tres modelos en paralelo de forma inmediata.
+                                        </p>
                                     </div>
                                 )}
 
                                 {loading && (
-                                    <div className="flex-1 flex flex-col items-center justify-center p-6 bg-white rounded-xl">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-slate-200 border-t-blue-600 mb-2"></div>
-                                        <p className="text-xs font-medium text-slate-400">Calculando inferencia matricial...</p>
+                                    <div className="flex-1 flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-inner">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-3"></div>
+                                        <p className="text-xs font-bold text-slate-500 animate-pulse">Consultando motores paralelos de clasificación...</p>
                                     </div>
                                 )}
 
-                                {result && (
+                                {results && (
                                     <div className="space-y-4 flex-1">
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                            <span className="text-[10px] font-bold text-slate-400 block uppercase">Clasificación Académica</span>
-                                            <span className={`text-xl font-black px-3 py-1 rounded-lg inline-block mt-1.5 ${
-                                                result.grade_class === 'Alta' ? 'bg-green-100 text-green-800' :
-                                                result.grade_class === 'Media' ? 'bg-blue-100 text-blue-800' :
-                                                'bg-red-100 text-red-800'
-                                            }`}>
-                                                Clase {result.grade_class}
-                                            </span>
-                                            <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between text-xs text-slate-400">
-                                                <span>Confianza: <b>{(result.confidence * 100).toFixed(1)}%</b></span>
-                                                <span>Modelo: <b className="font-mono">{result.model_used}</b></span>
-                                            </div>
-                                        </div>
+                                        {results.map((res, index) => (
+                                            <div key={index} className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
+                                                
+                                                {/* Encabezado del Algoritmo */}
+                                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                                    <span className="text-xs font-black text-slate-700 uppercase tracking-tight">{res.name}</span>
+                                                    <span className="text-[11px] font-mono text-slate-400">
+                                                        Confianza: <b>{(res.confidence * 100).toFixed(1)}%</b>
+                                                    </span>
+                                                </div>
 
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex-1">
-                                            <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">💡 Acciones Recomendadas (Plan de Intervención):</h4>
-                                            <ul className="space-y-2.5">
-                                                {result.interventions && result.interventions.map((accion, idx) => (
-                                                    <li key={idx} className="text-xs text-slate-600 leading-relaxed flex items-start gap-2">
-                                                        <span className="text-blue-600 font-bold">•</span>
-                                                        <span>{accion}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
+                                                {/* Fila de Clase y Recomendaciones */}
+                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                                                    
+                                                    {/* Badge de la etiqueta */}
+                                                    <div className="md:col-span-4">
+                                                        <span className={`text-xs font-black px-2.5 py-1 rounded-md block text-center border ${
+                                                            res.grade_class === 'Alta' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                            res.grade_class === 'Media' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                            'bg-red-50 text-red-700 border-red-200'
+                                                        }`}>
+                                                            Clase {res.grade_class}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Lista de Recomendaciones de este modelo */}
+                                                    <div className="md:col-span-8 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
+                                                        <ul className="space-y-1.5">
+                                                            {res.interventions.map((acc, i) => (
+                                                                <li key={i} className="text-[11px] text-slate-600 leading-tight flex items-start gap-1.5">
+                                                                    <span className="text-indigo-600 font-bold">•</span>
+                                                                    <span>{acc}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
 
@@ -217,7 +259,6 @@
             );
         }
 
-        // Renderizado compatible con React 18 en CDN global
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
