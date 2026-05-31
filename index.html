@@ -129,81 +129,84 @@
         </div>
     </div>
 
-    <script>
-        const API_URL ="https://landlord-enjoyment-aflutter.ngrok-free.dev/predict";
+<script>
+    const API_URL ="https://landlord-enjoyment-aflutter.ngrok-free.dev/predict";
 
-        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            // Elementos de la interfaz UI
-            const btnSubmit = document.getElementById('btnSubmit');
-            const spinner = document.getElementById('loadingSpinner');
-            const placeholder = document.getElementById('placeholderResult');
-            const resultContent = document.getElementById('resultContent');
+        // Elementos de la interfaz UI
+        const btnSubmit = document.getElementById('btnSubmit');
+        const spinner = document.getElementById('loadingSpinner');
+        const placeholder = document.getElementById('placeholderResult');
+        const resultContent = document.getElementById('resultContent');
 
-            // Bloquear botón y mostrar spinner animado
-            btnSubmit.disabled = true;
-            spinner.classList.remove('d-none');
+        // Bloquear botón y mostrar spinner animado
+        btnSubmit.disabled = true;
+        spinner.classList.remove('d-none');
 
-            // Capturar el modelo seleccionado
-            const selectedModel = document.getElementById('modelSelect').value;
+        // Capturar el modelo seleccionado
+        const selectedModel = document.getElementById('modelSelect').value;
 
-            // Extraer de forma ordenada todos los valores de las inputs de características
-            const inputs = document.querySelectorAll('.feature-input');
-            const featuresArray = Array.from(inputs).map(input => parseFloat(input.value));
+        // Extraer de forma ordenada todos los valores de las inputs de características
+        const inputs = document.querySelectorAll('.feature-input');
+        const featuresArray = Array.from(inputs).map(input => parseFloat(input.value));
 
-            // Estructurar el payload en formato JSON exacto como lo espera tu Flask
-            const payload = {
-                model: selectedModel,
-                features: featuresArray
-            };
+        // Estructurar el payload en formato JSON exacto como lo espera tu Flask
+        const payload = {
+            model: selectedModel,
+            features: featuresArray
+        };
 
-            try {
-                // Petición HTTP POST hacia tu IP pública de AWS EC2
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
+        try {
+            // Petición HTTP POST hacia tu túnel de ngrok
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // NUEVO: Esta cabecera destruye el bloqueo de seguridad intermedio de ngrok
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify(payload)
+            });
 
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor AWS');
-                }
-
-                const result = await response.json();
-
-                // --- Renderizar Resultados en Pantalla ---
-                placeholder.setAttribute('style', 'display: none !important');
-                resultContent.style.display = 'block';
-
-                // Mostrar la clase de nota predicha (0 - 4)
-                document.getElementById('resClass').innerText = `Clase ${result.grade_class}`;
-                // Convertir la confianza a porcentaje legible
-                document.getElementById('resConfidence').innerText = `${(result.confidence * 100).toFixed(2)}%`;
-                document.getElementById('resModel').innerText = result.model_used === 'neural_net' ? 'Red Neuronal' : 'Algoritmo Genético';
-
-                // Renderizar la lista de intervenciones devueltas por el Backend
-                const interventionsList = document.getElementById('resInterventions');
-                interventionsList.innerHTML = ''; // Limpiar anteriores
-                
-                result.interventions.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item ps-0 border-0 text-muted small';
-                    li.innerHTML = `• ${item}`;
-                    interventionsList.appendChild(li);
-                });
-
-            } catch (error) {
-                alert('❌ No se pudo conectar con el servidor de AWS. Valida que el proceso siga activo.');
-                console.error(error);
-            } finally {
-                // Liberar el botón
-                btnSubmit.disabled = false;
-                spinner.classList.add('d-none');
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor AWS');
             }
-        });
-    </script>
+
+            const result = await response.json();
+
+            // --- Renderizar Resultados en Pantalla ---
+            placeholder.setAttribute('style', 'display: none !important');
+            resultContent.style.display = 'block';
+
+            // Mostrar la clase de nota predicha (0 - 4)
+            document.getElementById('resClass').innerText = `Clase ${result.grade_class}`;
+            // Convertir la confianza a porcentaje legible
+            document.getElementById('resConfidence').innerText = `${(result.confidence * 100).toFixed(2)}%`;
+            document.getElementById('resModel').innerText = result.model_used === 'neural_net' ? 'Red Neuronal' : 'Algoritmo Genético';
+
+            // Renderizar la lista de intervenciones devueltas por el Backend
+            const interventionsList = document.getElementById('resInterventions');
+            interventionsList.innerHTML = ''; // Limpiar anteriores
+            
+            result.interventions.forEach(item => {
+                const li = document.createElement('li');
+                const li = document.createElement('li');
+                li.className = 'list-group-item ps-0 border-0 text-muted small';
+                li.innerHTML = `• ${item}`;
+                interventionsList.appendChild(li);
+            });
+
+        } catch (error) {
+            alert('❌ No se pudo conectar con el servidor de AWS. Valida que el proceso siga activo.');
+            console.error(error);
+        } finally {
+            // Liberar el botón
+            btnSubmit.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    });
+</script>
 </body>
 </html>
