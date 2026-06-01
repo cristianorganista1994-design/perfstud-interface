@@ -18,7 +18,11 @@
     <script type="text/babel">
         const { useState } = React;
 
-        // Diccionarios de mapeo para renderizar los menús desplegables
+        // URL de tu túnel de ngrok que apunta a tu Flask (app.py)
+        // REEMPLAZA ESTA URL CON LA QUE TE GENERE NGROK EN TU CONSOLA
+        const API_URL = "https://landlord-enjoyment-aflutter.ngrok-free.dev/predict";
+
+        // Diccionarios de mapeo para renderizar los menús desplegables en la interfaz
         const OPCIONES_GENERO = [
             { value: 0, label: "Femenino" },
             { value: 1, label: "Masculino" }
@@ -39,7 +43,7 @@
             { value: 4, label: "Nivel 4 (Muy Alto / Superior)" }
         ];
 
-        // Estructura de variables organizadas por tipo de control para el formulario
+        // Configuración de las variables basadas exactamente en tu dataset real
         const VARIABLES_CONFIG = [
             { id: 'Age', label: 'Edad (Age)', min: 15, max: 22, step: 1, desc: 'Edad del estudiante', type: 'slider' },
             { id: 'StudyTimeWeekly', label: 'Horas Estudio Semanal (StudyTimeWeekly)', min: 1, max: 30, step: 0.5, desc: 'Horas dedicadas a estudiar', type: 'slider' },
@@ -57,7 +61,7 @@
             { id: 'Volunteering', label: 'Realiza Voluntariado (Volunteering)', desc: 'Proyectos de ayuda social', type: 'checkbox' }
         ];
 
-        // Mapeo Oficial Basado en la Tabla de Distribución de tu Proyecto
+        // Mapeo de las 5 clases reales que tus modelos predicen en Python (Clases de 0 a 4)
         const CONFIG_CATEGORIAS = {
             0: { label: "Clase 0: Excelente", estilos: "bg-emerald-100 text-emerald-800 border-emerald-200", interventions: [
                 "Vincular formalmente al estudiante a semilleros de investigación avanzada o proyectos especiales de la facultad.",
@@ -87,11 +91,11 @@
         };
 
         function App() {
+            // Inicialización de los estados del formulario basándonos en la lista de variables
             const [formData, setFormData] = useState(() => {
                 return VARIABLES_CONFIG.reduce((acc, curr) => {
-                    // Inicializar checkboxes en 0 y el resto en sus mínimos o primeras opciones
                     if (curr.type === 'checkbox') {
-                        acc[curr.id] = 0;
+                        acc[curr.id] = 0; // 0 significa "No" para el backend
                     } else if (curr.type === 'slider') {
                         acc[curr.id] = curr.min;
                     } else {
@@ -100,17 +104,21 @@
                     return acc;
                 }, {});
             });
+
             const [loading, setLoading] = useState(false);
             const [results, setResults] = useState(null);
 
+            // Manejador para sliders y menús desplegables
             const handleChange = (id, val) => {
                 setFormData(prev => ({ ...prev, [id]: parseFloat(val) }));
             };
 
+            // Manejador especializado para las casillas checkbox (mapea True/False a 1/0)
             const handleCheckboxChange = (id, checked) => {
                 setFormData(prev => ({ ...prev, [id]: checked ? 1 : 0 }));
             };
 
+            // Generador de un perfil de estudiante aleatorio para agilizar las pruebas
             const generarDatosAleatorios = () => {
                 const nuevosDatos = {};
                 VARIABLES_CONFIG.forEach(v => {
@@ -128,78 +136,64 @@
                 setFormData(nuevosDatos);
             };
 
-            const handleSubmit = (e) => {
+            // CONEXIÓN REAL: Envía la petición HTTP POST a tu Flask
+            const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLoading(true);
                 setResults(null);
 
-                setTimeout(() => {
-                    // Lógica predictiva simulada
-                    const factorRendimiento = formData.StudyTimeWeekly - formData.Absences;
-                    let claseBase = 2; //
-                    
-                    if (factorRendimiento > 15) {
-                        claseBase = 0; 
-                    } else if (factorRendimiento > 4) {
-                        claseBase = 1; 
-                    } else if (factorRendimiento >= -3) {
-                        claseBase = 2; 
-                    } else if (factorRendimiento >= -10) {
-                        claseBase = 3; 
-                    } else {
-                        claseBase = 4; 
+                try {
+                    // Enviamos el estado "formData" completo. El backend en Python se encargará de ordenar y procesar.
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'ngrok-skip-browser-warning': 'true' // Evita la pantalla intermedia informativa de ngrok
+                        },
+                        body: JSON.stringify({ features: formData })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor de AWS / Flask');
                     }
-
-                    if (formData.Absences > 16) claseBase = 4;
-
-                    let claseNeuronal = claseBase;
-                    let claseArbol = (claseBase === 1 && formData.Tutoring === 0) ? 2 : claseBase;
-                    let claseLogistica = (factorRendimiento < -12) ? 4 : (factorRendimiento < -6 ? 3 : (factorRendimiento > 10 ? 0 : claseBase));
-
-                    claseNeuronal = Math.max(0, Math.min(4, claseNeuronal));
-                    claseArbol = Math.max(0, Math.min(4, claseArbol));
-                    claseLogistica = Math.max(0, Math.min(4, claseLogistica));
-
-                    const claseEnsamble = Math.round((claseNeuronal + claseArbol + claseLogistica) / 3);
-
-                    const confNeuronal = 0.92 + Math.random() * 0.04;
-                    const confArbol = 0.87 + Math.random() * 0.05;
-                    const confLogistica = 0.83 + Math.random() * 0.04;
-                    const confEnsamble = (confNeuronal + confArbol + confLogistica) / 3;
-
-                    const salidaModelos = [
-                        { name: "Red Neuronal + Algoritmo Genético", claseId: claseNeuronal, confidence: confNeuronal, isEnsemble: false },
-                        { name: "Árboles de Decisión", claseId: claseArbol, confidence: confArbol, isEnsemble: false },
-                        { name: "Regresión Logística", claseId: claseLogistica, confidence: confLogistica, isEnsemble: false },
-                        { name: "Ensamble Predictivo (Promedio de Modelos)", claseId: claseEnsamble, confidence: confEnsamble, isEnsemble: true }
-                    ];
-
-                    setResults(salidaModelos);
+                    
+                    const data = await response.json(); 
+                    
+                    if (data.status === 'success') {
+                        setResults(data.models_outputs); // Seteamos los resultados devueltos por Python en vivo
+                    } else {
+                        alert('❌ Error reportado por Flask: ' + data.error);
+                    }
+                    
+                } catch (err) {
+                    alert('❌ Error al conectar con el backend. Asegúrate de que Flask esté ejecutándose en tu servidor y que el túnel de ngrok esté bien configurado con la misma URL.');
+                    console.error(err);
+                } finally {
                     setLoading(false);
-                }, 900);
+                }
             };
 
             return (
                 <div className="p-4 md:p-6 max-w-7xl mx-auto font-sans">
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100">
                         
-                        {/* Banner Principal */}
+                        {/* Banner de Encabezado */}
                         <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white relative">
                             <h1 className="text-xl md:text-2xl font-black tracking-tight">📊 Sistema Predictivo Multi-Modelo Paralelo</h1>
-                            <p className="text-slate-300 text-xs md:text-sm mt-1">Inferencia simultánea de modelos entrenados y métricas consolidadas por ensamble ordinal.</p>
-                            <span className="absolute top-4 right-4 bg-amber-500 text-slate-900 font-bold text-[10px] px-2.5 py-0.5 rounded shadow">
-                                🛠️ MODO SIMULACIÓN OFFLINE (5 CLASES)
+                            <p className="text-slate-300 text-xs md:text-sm mt-1">Inferencia simultánea de modelos reales individuales y métricas consolidadas por ensamble ordinal.</p>
+                            <span className="absolute top-4 right-4 bg-green-500 text-white font-bold text-[10px] px-2.5 py-0.5 rounded shadow animate-pulse">
+                                🔌 CONEXIÓN BACKEND ACTIVA
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
                             
-                            {/* Panel Izquierdo: Formulario Optimizado */}
+                            {/* Panel Izquierdo: Formulario Dinámico */}
                             <form onSubmit={handleSubmit} className="p-6 lg:col-span-6 border-r border-slate-100 space-y-6">
                                 <div className="flex justify-between items-center bg-slate-100 p-4 rounded-xl">
                                     <div>
                                         <span className="block text-[10px] font-bold uppercase text-slate-500">Formulario Ergonómico</span>
-                                        <span className="text-xs font-semibold text-slate-700">Mapeo optimizado de controles (0 a 4)</span>
+                                        <span className="text-xs font-semibold text-slate-700">Mapeo optimizado (Clases del 0 al 4)</span>
                                     </div>
                                     <button
                                         type="button"
@@ -211,7 +205,7 @@
                                 </div>
 
                                 <div className="space-y-4">
-                                    {/* SECCIÓN 1: Sliders de Variables Continuas/Numéricas */}
+                                    {/* BLOQUE 1: Deslizadores Numéricos */}
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="sm:col-span-2 text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1">Variables Numéricas / Rangos</div>
                                         {VARIABLES_CONFIG.filter(v => v.type === 'slider').map((v) => (
@@ -235,7 +229,7 @@
                                         ))}
                                     </div>
 
-                                    {/* SECCIÓN 2: Menús Desplegables (Selects) */}
+                                    {/* BLOQUE 2: Menús Desplegables */}
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="sm:col-span-2 text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1">Categorías Generales</div>
                                         {VARIABLES_CONFIG.filter(v => v.type === 'select').map((v) => (
@@ -254,7 +248,7 @@
                                         ))}
                                     </div>
 
-                                    {/* SECCIÓN 3: Checkboxes (Casillas de Verificación) */}
+                                    {/* BLOQUE 3: Checkboxes */}
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                         <div className="text-[11px] font-bold text-indigo-950 uppercase border-b border-slate-200 pb-1 mb-3">Atributos Dicotómicos / Binarios</div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -281,19 +275,19 @@
                                     disabled={loading}
                                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow transition-all disabled:bg-slate-300 transform active:scale-[0.99]"
                                 >
-                                    {loading ? '⏳ Calculando Matrices en Paralelo...' : '🚀 Ejecutar Diagnóstico de Rendimiento'}
+                                    {loading ? '⏳ Consultando Servidor Flask en AWS...' : '🚀 Ejecutar Diagnóstico de Rendimiento'}
                                 </button>
                             </form>
 
-                            {/* Panel Derecho: Resultados */}
+                            {/* Panel Derecho: Bloques de Resultados de Python */}
                             <div className="p-6 lg:col-span-6 bg-slate-50 flex flex-col justify-start min-h-[500px]">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">🎯 Dictámenes Simultáneos del Sistema</h3>
 
                                 {!results && !loading && (
                                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 bg-white rounded-xl">
-                                        <span className="text-4xl mb-2">📊</span>
+                                        <span className="text-4xl mb-2">📡</span>
                                         <p className="text-xs text-slate-400 font-semibold max-w-sm">
-                                            Interactúe con el nuevo formulario estructurado para evaluar los 4 bloques de inferencia.
+                                            Modifique los parámetros del estudiante y haga clic en ejecutar para enviar el vector a los modelos reales en Python.
                                         </p>
                                     </div>
                                 )}
@@ -301,7 +295,7 @@
                                 {loading && (
                                     <div className="flex-1 flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-inner">
                                         <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-indigo-600 mb-3"></div>
-                                        <p className="text-xs font-bold text-slate-500 animate-pulse">Consultando motores paralelos y ensambles de votación...</p>
+                                        <p className="text-xs font-bold text-slate-500 animate-pulse">Enviando matriz de datos a través de ngrok a los hilos de inferencia...</p>
                                     </div>
                                 )}
 
